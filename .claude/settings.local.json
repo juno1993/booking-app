@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install)",
+      "Bash(npm run dev:*)",
+      "Bash(dir:*)",
+      "Bash(git config:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(npm install:*)",
+      "Bash(git push:*)",
+      "Bash(npm run crawl:*)",
+      "Bash(ls:*)",
+      "Bash(npx prisma db push:*)",
+      "Bash(npx dotenv:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx shadcn-ui@latest add:*)",
+      "Bash(npx shadcn@latest add:*)"
+    ]
+  }
+}
