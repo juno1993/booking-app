@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import "./globals.css"
 import { Header } from "@/components/layout/header"
 import { Footer } from "@/components/layout/footer"
+import { MobileTabBar } from "@/components/layout/mobile-tab-bar"
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
@@ -18,8 +19,9 @@ export default function RootLayout({
     <html lang="ko">
       <body className="min-h-screen flex flex-col">
         <Header />
-        <main className="flex-1">{children}</main>
+        <main className="flex-1 pb-14 md:pb-0">{children}</main>
         <Footer />
+        <MobileTabBar />
         <Toaster />
       </body>
     </html>

@@ -5,7 +5,12 @@ import { UserNav } from '@/components/layout/user-nav'
 import { Search, Building2, Hotel, TreePine } from 'lucide-react'
 
 export async function Header() {
-  const user = await getAuthUser()
+  let user = null
+  try {
+    user = await getAuthUser()
+  } catch {
+    // Build time or DB connection failure - render as logged out
+  }
 
   return (
     <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">

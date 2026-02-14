@@ -15,7 +15,8 @@
       "Bash(npx dotenv:*)",
       "Bash(npx tsc:*)",
       "Bash(npx shadcn-ui@latest add:*)",
-      "Bash(npx shadcn@latest add:*)"
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(npm run build:*)"
     ]
   }
 }
