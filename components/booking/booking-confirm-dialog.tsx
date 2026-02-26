@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createBooking } from '@/app/actions/booking'
+import { createBooking, createMultipleBookings } from '@/app/actions/booking'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -19,21 +19,29 @@ import { useToast } from '@/hooks/use-toast'
 interface BookingConfirmDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  selectedSlot: {
-    id: string
-    startTime: string
-    endTime: string
-  }
+  selectedSlot: { id: string; startTime: string; endTime: string } | null
+  selectedSlotIds?: string[]
   productName: string
   selectedDate: string
+  checkIn?: string
+  checkOut?: string
+  nights?: number
+  totalPrice?: number
+  isOvernight?: boolean
 }
 
 export function BookingConfirmDialog({
   open,
   onOpenChange,
   selectedSlot,
+  selectedSlotIds,
   productName,
   selectedDate,
+  checkIn,
+  checkOut,
+  nights,
+  totalPrice,
+  isOvernight,
 }: BookingConfirmDialogProps) {
   const router = useRouter()
   const { toast } = useToast()
@@ -42,10 +50,23 @@ export function BookingConfirmDialog({
 
   const handleConfirm = async () => {
     setIsLoading(true)
-    const result = await createBooking({
-      timeSlotId: selectedSlot.id,
-      note: note || undefined,
-    })
+
+    let result
+    if (isOvernight && selectedSlotIds && selectedSlotIds.length > 0) {
+      result = await createMultipleBookings({
+        timeSlotIds: selectedSlotIds,
+        note: note || undefined,
+      })
+    } else if (selectedSlot) {
+      result = await createBooking({
+        timeSlotId: selectedSlot.id,
+        note: note || undefined,
+      })
+    } else {
+      setIsLoading(false)
+      return
+    }
+
     setIsLoading(false)
 
     if (!result.success) {
@@ -78,14 +99,39 @@ export function BookingConfirmDialog({
             <span className="text-muted-foreground">상품</span>
             <span className="font-medium">{productName}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">날짜</span>
-            <span>{selectedDate}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">시간</span>
-            <span>{selectedSlot.startTime} ~ {selectedSlot.endTime}</span>
-          </div>
+          {isOvernight ? (
+            <>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">체크인</span>
+                <span>{checkIn}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">체크아웃</span>
+                <span>{checkOut}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">숙박</span>
+                <span>{nights}박 {(nights ?? 0) + 1}일</span>
+              </div>
+              {totalPrice !== undefined && (
+                <div className="flex justify-between font-semibold border-t pt-2">
+                  <span>총 금액</span>
+                  <span className="text-primary">{totalPrice.toLocaleString()}원</span>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">날짜</span>
+                <span>{selectedDate}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">시간</span>
+                <span>{selectedSlot?.startTime} ~ {selectedSlot?.endTime}</span>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="space-y-2">

@@ -5,4 +5,10 @@ export const bookingSchema = z.object({
   note: z.string().max(500).optional(),
 })
 
+export const multiBookingSchema = z.object({
+  timeSlotIds: z.array(z.string().uuid()).min(1, '슬롯을 선택해주세요'),
+  note: z.string().max(500).optional(),
+})
+
 export type BookingSchemaType = z.infer<typeof bookingSchema>
+export type MultiBookingSchemaType = z.infer<typeof multiBookingSchema>

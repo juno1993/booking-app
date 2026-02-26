@@ -90,6 +90,7 @@ model Booking {
   user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   timeSlotId String        @unique @map("time_slot_id")
   timeSlot   TimeSlot      @relation(fields: [timeSlotId], references: [id], onDelete: Cascade)
+  groupId    String?       @map("group_id")
   status     BookingStatus @default(PENDING)
   note       String?
   createdAt  DateTime      @default(now()) @map("created_at")
@@ -97,5 +98,6 @@ model Booking {
 
   @@index([userId])
   @@index([status])
+  @@index([groupId])
   @@map("bookings")
 }

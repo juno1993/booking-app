@@ -24,6 +24,15 @@ export default async function ProductDetailPage({
     // Auth failure - render as logged out
   }
 
+  const isOvernight =
+    product.category === 'PENSION' ||
+    product.category === 'HOTEL' ||
+    (() => {
+      const [oh, om] = product.openTime.split(':').map(Number)
+      const [ch, cm] = product.closeTime.split(':').map(Number)
+      return oh * 60 + om >= ch * 60 + cm
+    })()
+
   return (
     <div className="container mx-auto px-4 py-8 animate-slide-up">
       <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
@@ -35,7 +44,9 @@ export default async function ProductDetailPage({
                 <span className="text-2xl font-bold text-primary">
                   {product.pricePerSlot.toLocaleString()}
                 </span>
-                <span className="text-sm text-muted-foreground">원 / {product.slotDuration}분</span>
+                <span className="text-sm text-muted-foreground">
+                  원 / {isOvernight ? '박' : `${product.slotDuration}분`}
+                </span>
               </div>
             </div>
             <div className="border-t" />
@@ -44,6 +55,9 @@ export default async function ProductDetailPage({
               productName={product.name}
               isLoggedIn={!!user}
               price={product.pricePerSlot}
+              openTime={product.openTime}
+              closeTime={product.closeTime}
+              category={product.category}
             />
           </div>
         </div>
