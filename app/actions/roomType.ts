@@ -26,12 +26,12 @@ export async function createRoomType(productId: string, formData: unknown) {
 
   const parsed = roomTypeSchema.safeParse(formData)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.flatten().fieldErrors }
+    return { success: false as const, error: parsed.error.flatten().fieldErrors }
   }
 
   await prisma.roomType.create({ data: { ...parsed.data, productId } })
   revalidatePath(`/admin/products/${productId}/rooms`)
-  return { success: true }
+  return { success: true as const }
 }
 
 export async function updateRoomType(id: string, productId: string, formData: unknown) {
@@ -39,12 +39,12 @@ export async function updateRoomType(id: string, productId: string, formData: un
 
   const parsed = roomTypeSchema.safeParse(formData)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.flatten().fieldErrors }
+    return { success: false as const, error: parsed.error.flatten().fieldErrors }
   }
 
   await prisma.roomType.update({ where: { id }, data: parsed.data })
   revalidatePath(`/admin/products/${productId}/rooms`)
-  return { success: true }
+  return { success: true as const }
 }
 
 export async function deleteRoomType(id: string, productId: string) {
