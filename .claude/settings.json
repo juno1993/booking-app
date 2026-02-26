@@ -7,5 +7,10 @@
       "Read(**/*.pem)",
       "Read(**/credentials.json)"
     ]
-  }
+  },
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "includeCoAuthoredBy": false
 }

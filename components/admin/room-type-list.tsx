@@ -94,7 +94,7 @@ export function RoomTypeList({ productId, roomTypes }: RoomTypeListProps) {
     setIsSubmitting(false)
 
     if (!result.success) {
-      setError(typeof result.error === 'string' ? result.error : '입력값을 확인해주세요')
+      setError('입력값을 확인해주세요')
       return
     }
 
