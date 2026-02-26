@@ -24,7 +24,7 @@ export default async function MyBookingsPage({
     },
     include: {
       timeSlot: {
-        include: { product: true },
+        include: { product: true, roomType: true },
       },
       user: {
         select: { id: true, email: true, name: true, phone: true },
