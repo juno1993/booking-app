@@ -61,40 +61,65 @@ model Product {
   updatedAt    DateTime        @updatedAt @map("updated_at")
 
   timeSlots TimeSlot[]
+  rooms     RoomType[]
 
   @@map("products")
 }
 
+model RoomType {
+  id          String   @id @default(uuid())
+  productId   String   @map("product_id")
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  price       Int      @default(0)
+  capacity    Int      @default(2)
+  images      String[]
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  timeSlots TimeSlot[]
+
+  @@index([productId])
+  @@map("room_types")
+}
+
 model TimeSlot {
-  id        String         @id @default(uuid())
-  productId String         @map("product_id")
-  product   Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
-  date      DateTime       @db.Date
-  startTime String         @map("start_time")
-  endTime   String         @map("end_time")
-  status    TimeSlotStatus @default(AVAILABLE)
-  createdAt DateTime       @default(now()) @map("created_at")
-  updatedAt DateTime       @updatedAt @map("updated_at")
+  id         String         @id @default(uuid())
+  productId  String         @map("product_id")
+  product    Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  roomTypeId String?        @map("room_type_id")
+  roomType   RoomType?      @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+  date       DateTime       @db.Date
+  startTime  String         @map("start_time")
+  endTime    String         @map("end_time")
+  status     TimeSlotStatus @default(AVAILABLE)
+  createdAt  DateTime       @default(now()) @map("created_at")
+  updatedAt  DateTime       @updatedAt @map("updated_at")
 
   booking Booking?
 
-  @@unique([productId, date, startTime])
+  @@unique([productId, roomTypeId, date, startTime])
   @@index([productId, date])
+  @@index([roomTypeId, date])
   @@index([date, status])
   @@map("time_slots")
 }
 
 model Booking {
-  id         String        @id @default(uuid())
-  userId     String        @map("user_id")
-  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  timeSlotId String        @unique @map("time_slot_id")
-  timeSlot   TimeSlot      @relation(fields: [timeSlotId], references: [id], onDelete: Cascade)
-  groupId    String?       @map("group_id")
-  status     BookingStatus @default(PENDING)
-  note       String?
-  createdAt  DateTime      @default(now()) @map("created_at")
-  updatedAt  DateTime      @updatedAt @map("updated_at")
+  id            String        @id @default(uuid())
+  userId        String        @map("user_id")
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timeSlotId    String        @unique @map("time_slot_id")
+  timeSlot      TimeSlot      @relation(fields: [timeSlotId], references: [id], onDelete: Cascade)
+  groupId       String?       @map("group_id")
+  roomTypeName  String?       @map("room_type_name")
+  priceSnapshot Int?          @map("price_snapshot")
+  status        BookingStatus @default(PENDING)
+  note          String?
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
 
   @@index([userId])
   @@index([status])

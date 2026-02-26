@@ -13,7 +13,7 @@ export async function createBooking(formData: unknown) {
     return { success: false, error: parsed.error.flatten().fieldErrors }
   }
 
-  const { timeSlotId, note } = parsed.data
+  const { timeSlotId, note, roomTypeName, priceSnapshot } = parsed.data
 
   const booking = await prisma.$transaction(async (tx) => {
     const slot = await tx.timeSlot.findUnique({
@@ -35,6 +35,8 @@ export async function createBooking(formData: unknown) {
         timeSlotId,
         note,
         status: 'PENDING',
+        ...(roomTypeName && { roomTypeName }),
+        ...(priceSnapshot !== undefined && { priceSnapshot }),
       },
     })
   }).catch((err: Error) => {
@@ -58,7 +60,7 @@ export async function createMultipleBookings(formData: unknown) {
     return { success: false, error: parsed.error.flatten().fieldErrors }
   }
 
-  const { timeSlotIds, note } = parsed.data
+  const { timeSlotIds, note, roomTypeName, priceSnapshot } = parsed.data
   const groupId = crypto.randomUUID()
 
   const result = await prisma.$transaction(async (tx) => {
@@ -83,7 +85,15 @@ export async function createMultipleBookings(formData: unknown) {
     return Promise.all(
       timeSlotIds.map((timeSlotId) =>
         tx.booking.create({
-          data: { userId: user.id, timeSlotId, note, status: 'PENDING', groupId },
+          data: {
+            userId: user.id,
+            timeSlotId,
+            note,
+            status: 'PENDING',
+            groupId,
+            ...(roomTypeName && { roomTypeName }),
+            ...(priceSnapshot !== undefined && { priceSnapshot }),
+          },
         })
       )
     )
@@ -123,7 +133,6 @@ export async function cancelBooking(bookingId: string) {
     return { success: false, error: '예약을 찾을 수 없습니다' }
   }
 
-  // 본인 예약이 아니면 ADMIN만 취소 가능
   if (booking.userId !== user.id && user.role !== 'ADMIN') {
     return { success: false, error: '권한이 없습니다' }
   }
@@ -153,7 +162,7 @@ export async function getBookings(filter?: { status?: string }) {
     where,
     include: {
       timeSlot: {
-        include: { product: true },
+        include: { product: true, roomType: true },
       },
       user: {
         select: { id: true, email: true, name: true, phone: true },
@@ -170,7 +179,7 @@ export async function getBooking(id: string) {
     where: { id },
     include: {
       timeSlot: {
-        include: { product: true },
+        include: { product: true, roomType: true },
       },
       user: {
         select: { id: true, email: true, name: true, phone: true },

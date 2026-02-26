@@ -7,7 +7,8 @@ import { revalidatePath } from 'next/cache'
 export async function generateTimeSlots(
   productId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
+  roomTypeId?: string
 ) {
   await requireAdmin()
 
@@ -20,6 +21,7 @@ export async function generateTimeSlots(
 
   const slots: {
     productId: string
+    roomTypeId?: string
     date: Date
     startTime: string
     endTime: string
@@ -34,19 +36,20 @@ export async function generateTimeSlots(
   const closeMinutes = closeH * 60 + closeM
   const isOvernight = openMinutes >= closeMinutes
 
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+  for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
     const dateStr = d.toISOString().split('T')[0]
 
     if (isOvernight) {
-      // 숙박형 (예: 15:00~11:00) — 하루 1슬롯
+      // 숙박형 — 하루 1슬롯
       slots.push({
         productId,
+        ...(roomTypeId && { roomTypeId }),
         date: new Date(dateStr + 'T00:00:00Z'),
         startTime: product.openTime,
         endTime: product.closeTime,
       })
     } else {
-      // 시간제 (예: 09:00~22:00) — slotDuration 단위로 분할
+      // 시간제 — slotDuration 단위로 분할
       for (let m = openMinutes; m + product.slotDuration <= closeMinutes; m += product.slotDuration) {
         const sh = Math.floor(m / 60)
         const sm = m % 60
@@ -63,13 +66,39 @@ export async function generateTimeSlots(
     }
   }
 
-  const result = await prisma.timeSlot.createMany({
-    data: slots,
-    skipDuplicates: true,
-  })
+  let count = 0
+
+  if (roomTypeId) {
+    // roomTypeId 있는 경우: unique constraint 동작하므로 skipDuplicates 사용
+    const result = await prisma.timeSlot.createMany({
+      data: slots,
+      skipDuplicates: true,
+    })
+    count = result.count
+  } else {
+    // roomTypeId 없는 SPACE 상품: 앱 레벨에서 중복 체크
+    const existing = await prisma.timeSlot.findMany({
+      where: {
+        productId,
+        roomTypeId: null,
+        date: { gte: start, lte: end },
+      },
+      select: { date: true, startTime: true },
+    })
+    const existingSet = new Set(
+      existing.map((s) => `${s.date.toISOString().split('T')[0]}_${s.startTime}`)
+    )
+    const newSlots = slots.filter(
+      (s) => !existingSet.has(`${s.date.toISOString().split('T')[0]}_${s.startTime}`)
+    )
+    if (newSlots.length > 0) {
+      const result = await prisma.timeSlot.createMany({ data: newSlots })
+      count = result.count
+    }
+  }
 
   revalidatePath(`/admin/products/${productId}/slots`)
-  return { success: true, count: result.count }
+  return { success: true, count }
 }
 
 export async function toggleSlotStatus(
@@ -88,14 +117,17 @@ export async function toggleSlotStatus(
 
 export async function getSlotsByProductAndDate(
   productId: string,
-  date: string
+  date: string,
+  roomTypeId?: string
 ) {
   return prisma.timeSlot.findMany({
     where: {
       productId,
       date: new Date(date + 'T00:00:00Z'),
+      ...(roomTypeId ? { roomTypeId } : {}),
     },
     include: {
+      roomType: true,
       booking: {
         include: {
           user: {
@@ -104,6 +136,6 @@ export async function getSlotsByProductAndDate(
         },
       },
     },
-    orderBy: { startTime: 'asc' },
+    orderBy: [{ roomTypeId: 'asc' }, { startTime: 'asc' }],
   })
 }

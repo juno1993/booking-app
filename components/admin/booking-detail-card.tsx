@@ -69,6 +69,18 @@ export function BookingDetailCard({ booking }: BookingDetailCardProps) {
           <span className="text-muted-foreground">시간</span>
           <span>{booking.timeSlot.startTime} ~ {booking.timeSlot.endTime}</span>
         </div>
+        {booking.roomTypeName && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">객실</span>
+            <span>{booking.roomTypeName}</span>
+          </div>
+        )}
+        {booking.priceSnapshot !== null && booking.priceSnapshot !== undefined && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">예약 가격</span>
+            <span className="font-medium">{booking.priceSnapshot.toLocaleString()}원/박</span>
+          </div>
+        )}
         {booking.note && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">메모</span>

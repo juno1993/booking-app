@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import { Calendar, Clock, MapPin, ExternalLink } from 'lucide-react'
+import { Calendar, Clock, MapPin, ExternalLink, BedDouble } from 'lucide-react'
 import type { BookingWithDetails } from '@/types'
 
 const categoryConfig: Record<string, { label: string; emoji: string; color: string }> = {
@@ -116,6 +116,17 @@ export function BookingCard({ booking }: BookingCardProps) {
                 <Clock className="h-3.5 w-3.5 flex-shrink-0" />
                 <span>{booking.timeSlot.startTime} ~ {booking.timeSlot.endTime}</span>
               </div>
+              {booking.roomTypeName && (
+                <div className="flex items-center gap-1.5">
+                  <BedDouble className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span>{booking.roomTypeName}</span>
+                  {booking.priceSnapshot !== null && booking.priceSnapshot !== undefined && (
+                    <span className="text-primary font-medium">
+                      · {booking.priceSnapshot.toLocaleString()}원/박
+                    </span>
+                  )}
+                </div>
+              )}
               {product.address && (
                 <div className="flex items-center gap-1.5">
                   <MapPin className="h-3.5 w-3.5 flex-shrink-0" />

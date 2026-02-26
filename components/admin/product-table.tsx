@@ -93,6 +93,13 @@ export function ProductTable({ products }: ProductTableProps) {
                     <Button variant="outline" size="sm" asChild>
                       <Link href={`/admin/products/${product.id}`}>수정</Link>
                     </Button>
+                    {(product.category === 'PENSION' || product.category === 'HOTEL') && (
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href={`/admin/products/${product.id}/rooms`}>
+                          객실 관리
+                        </Link>
+                      </Button>
+                    )}
                     <Button variant="outline" size="sm" asChild>
                       <Link href={`/admin/products/${product.id}/slots`}>
                         슬롯 관리

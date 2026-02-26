@@ -3,6 +3,7 @@ import type {
   Product as PrismaProduct,
   TimeSlot as PrismaTimeSlot,
   Booking as PrismaBooking,
+  RoomType as PrismaRoomType,
 } from '@prisma/client'
 
 // Re-export Prisma types
@@ -10,6 +11,7 @@ export type User = PrismaUser
 export type Product = PrismaProduct
 export type TimeSlot = PrismaTimeSlot
 export type Booking = PrismaBooking
+export type RoomType = PrismaRoomType
 
 // Re-export enums
 export {
@@ -27,11 +29,13 @@ export type ProductWithSlots = PrismaProduct & {
 export type BookingWithDetails = PrismaBooking & {
   timeSlot: PrismaTimeSlot & {
     product: PrismaProduct
+    roomType: PrismaRoomType | null
   }
   user: Pick<PrismaUser, 'id' | 'email' | 'name' | 'phone'>
 }
 
 export type TimeSlotWithBooking = PrismaTimeSlot & {
+  roomType: PrismaRoomType | null
   booking:
     | (PrismaBooking & {
         user: Pick<PrismaUser, 'id' | 'email' | 'name' | 'phone'>

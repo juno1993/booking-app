@@ -28,6 +28,8 @@ interface BookingConfirmDialogProps {
   nights?: number
   totalPrice?: number
   isOvernight?: boolean
+  roomTypeName?: string
+  priceSnapshot?: number
 }
 
 export function BookingConfirmDialog({
@@ -42,6 +44,8 @@ export function BookingConfirmDialog({
   nights,
   totalPrice,
   isOvernight,
+  roomTypeName,
+  priceSnapshot,
 }: BookingConfirmDialogProps) {
   const router = useRouter()
   const { toast } = useToast()
@@ -56,11 +60,15 @@ export function BookingConfirmDialog({
       result = await createMultipleBookings({
         timeSlotIds: selectedSlotIds,
         note: note || undefined,
+        ...(roomTypeName && { roomTypeName }),
+        ...(priceSnapshot !== undefined && { priceSnapshot }),
       })
     } else if (selectedSlot) {
       result = await createBooking({
         timeSlotId: selectedSlot.id,
         note: note || undefined,
+        ...(roomTypeName && { roomTypeName }),
+        ...(priceSnapshot !== undefined && { priceSnapshot }),
       })
     } else {
       setIsLoading(false)
@@ -99,6 +107,12 @@ export function BookingConfirmDialog({
             <span className="text-muted-foreground">상품</span>
             <span className="font-medium">{productName}</span>
           </div>
+          {roomTypeName && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">객실</span>
+              <span className="font-medium">{roomTypeName}</span>
+            </div>
+          )}
           {isOvernight ? (
             <>
               <div className="flex justify-between">
