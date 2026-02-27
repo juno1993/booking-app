@@ -6,8 +6,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { BookingConfirmDialog } from '@/components/booking/booking-confirm-dialog'
-import { cn } from '@/lib/utils'
-import { CalendarDays, Clock, Loader2, CheckCircle, XCircle, Users } from 'lucide-react'
+import { cn, isOvernightProduct } from '@/lib/utils'
+import { CalendarDays, Clock, Loader2, CheckCircle, XCircle, Users, AlertCircle } from 'lucide-react'
 
 interface SlotData {
   id: string
@@ -41,13 +41,6 @@ interface SlotPickerProps {
   category: string
 }
 
-function isOvernightProduct(category: string, openTime: string, closeTime: string): boolean {
-  if (category === 'PENSION' || category === 'HOTEL') return true
-  const [oh, om] = openTime.split(':').map(Number)
-  const [ch, cm] = closeTime.split(':').map(Number)
-  return oh * 60 + om >= ch * 60 + cm
-}
-
 function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr + 'T00:00:00Z')
   d.setUTCDate(d.getUTCDate() + days)
@@ -55,8 +48,8 @@ function addDays(dateStr: string, days: number): string {
 }
 
 function getLocalToday(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  // UTC 기준 오늘 날짜 사용 — 로컬 시간(KST 등)으로 계산 시 서버와 날짜 불일치 방지
+  return new Date().toISOString().split('T')[0]
 }
 
 function getDatesInRange(start: string, end: string): string[] {
@@ -84,12 +77,14 @@ export function SlotPicker({ productId, productName, isLoggedIn, price, openTime
   // Room type state (PENSION/HOTEL only)
   const [roomTypes, setRoomTypes] = useState<RoomTypeData[]>([])
   const [roomTypesLoading, setRoomTypesLoading] = useState(false)
+  const [roomTypesError, setRoomTypesError] = useState(false)
   const [selectedRoom, setSelectedRoom] = useState<RoomTypeData | null>(null)
 
   // Hourly mode state
   const [selectedDate, setSelectedDate] = useState(today)
   const [slots, setSlots] = useState<SlotData[]>([])
   const [loading, setLoading] = useState(false)
+  const [slotsError, setSlotsError] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState<SlotData | null>(null)
 
   // Overnight mode state
@@ -97,6 +92,7 @@ export function SlotPicker({ productId, productName, isLoggedIn, price, openTime
   const [checkOut, setCheckOut] = useState('')
   const [nightAvailability, setNightAvailability] = useState<NightAvailability[]>([])
   const [loadingRange, setLoadingRange] = useState(false)
+  const [rangeError, setRangeError] = useState(false)
 
   const [dialogOpen, setDialogOpen] = useState(false)
 
@@ -104,13 +100,17 @@ export function SlotPicker({ productId, productName, isLoggedIn, price, openTime
   useEffect(() => {
     if (!hasRoomTypes) return
     setRoomTypesLoading(true)
+    setRoomTypesError(false)
     fetch(`/api/products/${productId}/room-types`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error('fetch failed')
+        return r.json()
+      })
       .then((data: RoomTypeData[]) => {
         setRoomTypes(data)
         if (data.length === 1) setSelectedRoom(data[0])
       })
-      .catch(() => {})
+      .catch(() => setRoomTypesError(true))
       .finally(() => setRoomTypesLoading(false))
   }, [productId, hasRoomTypes])
 
@@ -118,11 +118,16 @@ export function SlotPicker({ productId, productName, isLoggedIn, price, openTime
   const fetchSlots = useCallback(async () => {
     if (!selectedDate) return
     setLoading(true)
+    setSlotsError(false)
     const roomParam = selectedRoom ? `&roomTypeId=${selectedRoom.id}` : ''
-    const res = await fetch(`/api/products/${productId}/slots?date=${selectedDate}${roomParam}`)
-    if (res.ok) {
+    try {
+      const res = await fetch(`/api/products/${productId}/slots?date=${selectedDate}${roomParam}`)
+      if (!res.ok) throw new Error('fetch failed')
       const data = await res.json()
       setSlots(data)
+    } catch {
+      setSlotsError(true)
+      setSlots([])
     }
     setLoading(false)
   }, [productId, selectedDate, selectedRoom])
@@ -131,20 +136,25 @@ export function SlotPicker({ productId, productName, isLoggedIn, price, openTime
   const fetchRangeSlots = useCallback(async (start: string, end: string) => {
     if (!start || !end || start >= end) return
     setLoadingRange(true)
+    setRangeError(false)
     const dates = getDatesInRange(start, end)
     const roomParam = selectedRoom ? `&roomTypeId=${selectedRoom.id}` : ''
 
-    const results = await Promise.all(
-      dates.map(async (date) => {
-        const res = await fetch(`/api/products/${productId}/slots?date=${date}${roomParam}`)
-        if (!res.ok) return { date, slot: null, available: false }
-        const data: SlotData[] = await res.json()
-        const slot = data[0] ?? null
-        return { date, slot, available: slot?.status === 'AVAILABLE' }
-      })
-    )
-
-    setNightAvailability(results)
+    try {
+      const results = await Promise.all(
+        dates.map(async (date) => {
+          const res = await fetch(`/api/products/${productId}/slots?date=${date}${roomParam}`)
+          if (!res.ok) throw new Error('fetch failed')
+          const data: SlotData[] = await res.json()
+          const slot = data[0] ?? null
+          return { date, slot, available: slot?.status === 'AVAILABLE' }
+        })
+      )
+      setNightAvailability(results)
+    } catch {
+      setRangeError(true)
+      setNightAvailability([])
+    }
     setLoadingRange(false)
   }, [productId, selectedRoom])
 
@@ -210,6 +220,11 @@ export function SlotPicker({ productId, productName, isLoggedIn, price, openTime
             {roomTypesLoading ? (
               <div className="flex items-center justify-center py-4">
                 <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              </div>
+            ) : roomTypesError ? (
+              <div className="flex items-center gap-2 text-sm text-destructive py-4">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                객실 정보를 불러오지 못했습니다. 페이지를 새로고침해주세요.
               </div>
             ) : roomTypes.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
@@ -300,6 +315,11 @@ export function SlotPicker({ productId, productName, isLoggedIn, price, openTime
                 {loadingRange ? (
                   <div className="flex items-center justify-center py-6">
                     <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  </div>
+                ) : rangeError ? (
+                  <div className="flex items-center gap-2 text-sm text-destructive py-2">
+                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                    가용 여부를 확인하지 못했습니다. 다시 시도해주세요.
                   </div>
                 ) : nightAvailability.length > 0 && (
                   <div className="space-y-2">
@@ -432,6 +452,11 @@ export function SlotPicker({ productId, productName, isLoggedIn, price, openTime
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
+        ) : slotsError ? (
+          <div className="flex items-center gap-2 text-sm text-destructive py-4 rounded-lg bg-destructive/5 px-3">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            슬롯 정보를 불러오지 못했습니다. 페이지를 새로고침해주세요.
+          </div>
         ) : slots.length === 0 ? (
           <div className="text-center py-8 rounded-lg bg-muted/30">
             <p className="text-sm text-muted-foreground">
@@ -508,9 +533,9 @@ export function SlotPicker({ productId, productName, isLoggedIn, price, openTime
             <p className="text-xs text-muted-foreground truncate">
               {selectedDate} {selectedSlot.startTime}~{selectedSlot.endTime}
             </p>
-            {price && (
+            {effectivePrice && (
               <p className="text-base font-bold text-primary">
-                {price.toLocaleString()}원
+                {effectivePrice.toLocaleString()}원
               </p>
             )}
           </div>

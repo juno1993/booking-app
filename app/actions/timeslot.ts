@@ -19,6 +19,20 @@ export async function generateTimeSlots(
 
   if (!product) return { success: false, error: '상품을 찾을 수 없습니다', count: 0 }
 
+  // 날짜 유효성 검증
+  const start = new Date(startDate + 'T00:00:00Z')
+  const end = new Date(endDate + 'T00:00:00Z')
+  if (start > end) return { success: false, error: '시작일이 종료일보다 늦을 수 없습니다', count: 0 }
+
+  // roomTypeId가 해당 상품에 속하는지 검증
+  if (roomTypeId) {
+    const roomType = await prisma.roomType.findFirst({
+      where: { id: roomTypeId, productId },
+      select: { id: true },
+    })
+    if (!roomType) return { success: false, error: '유효하지 않은 객실입니다', count: 0 }
+  }
+
   const slots: {
     productId: string
     roomTypeId?: string
@@ -26,9 +40,6 @@ export async function generateTimeSlots(
     startTime: string
     endTime: string
   }[] = []
-
-  const start = new Date(startDate + 'T00:00:00Z')
-  const end = new Date(endDate + 'T00:00:00Z')
 
   const [openH, openM] = product.openTime.split(':').map(Number)
   const [closeH, closeM] = product.closeTime.split(':').map(Number)
@@ -92,8 +103,19 @@ export async function generateTimeSlots(
       (s) => !existingSet.has(`${s.date.toISOString().split('T')[0]}_${s.startTime}`)
     )
     if (newSlots.length > 0) {
-      const result = await prisma.timeSlot.createMany({ data: newSlots })
-      count = result.count
+      // SPACE 슬롯은 DB unique 제약이 없으므로 동시 삽입 시 중복 가능
+      // try/catch로 중복 키 오류를 방어하고 이미 존재하는 슬롯은 무시
+      try {
+        const result = await prisma.timeSlot.createMany({ data: newSlots })
+        count = result.count
+      } catch {
+        // 동시 삽입 충돌 시 성공한 것만 반영하기 위해 재조회
+        const after = await prisma.timeSlot.findMany({
+          where: { productId, roomTypeId: null, date: { gte: start, lte: end } },
+          select: { id: true },
+        })
+        count = Math.max(0, after.length - existing.length)
+      }
     }
   }
 

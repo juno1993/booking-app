@@ -52,5 +52,5 @@ export async function deleteRoomType(id: string, productId: string) {
 
   await prisma.roomType.delete({ where: { id } })
   revalidatePath(`/admin/products/${productId}/rooms`)
-  return { success: true }
+  return { success: true as const }
 }

@@ -56,23 +56,40 @@ export function BookingConfirmDialog({
     setIsLoading(true)
 
     let result
-    if (isOvernight && selectedSlotIds && selectedSlotIds.length > 0) {
+    if (isOvernight) {
+      // 숙박 예약: slotIds 필수
+      if (!selectedSlotIds || selectedSlotIds.length === 0) {
+        toast({
+          title: '날짜를 선택해주세요',
+          description: '체크인/체크아웃 날짜를 다시 선택해주세요',
+          variant: 'destructive',
+        })
+        setIsLoading(false)
+        return
+      }
       result = await createMultipleBookings({
         timeSlotIds: selectedSlotIds,
         note: note || undefined,
         ...(roomTypeName && { roomTypeName }),
         ...(priceSnapshot !== undefined && { priceSnapshot }),
       })
-    } else if (selectedSlot) {
+    } else {
+      // 시간제 예약: selectedSlot 필수
+      if (!selectedSlot) {
+        toast({
+          title: '시간을 선택해주세요',
+          description: '예약할 시간대를 선택해주세요',
+          variant: 'destructive',
+        })
+        setIsLoading(false)
+        return
+      }
       result = await createBooking({
         timeSlotId: selectedSlot.id,
         note: note || undefined,
         ...(roomTypeName && { roomTypeName }),
         ...(priceSnapshot !== undefined && { priceSnapshot }),
       })
-    } else {
-      setIsLoading(false)
-      return
     }
 
     setIsLoading(false)

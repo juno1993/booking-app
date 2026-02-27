@@ -25,6 +25,17 @@ export function SlotCalendarView({ productId, roomTypes }: SlotCalendarViewProps
 
   const hasRooms = roomTypes && roomTypes.length > 0
 
+  // roomTypes가 변경될 때 선택된 룸이 목록에 없으면 첫 번째 룸으로 초기화
+  useEffect(() => {
+    if (!roomTypes || roomTypes.length === 0) {
+      setSelectedRoomId(undefined)
+      return
+    }
+    if (!selectedRoomId || !roomTypes.find((r) => r.id === selectedRoomId)) {
+      setSelectedRoomId(roomTypes[0].id)
+    }
+  }, [roomTypes])
+
   const fetchSlots = useCallback(async () => {
     if (!date) return
     setLoading(true)

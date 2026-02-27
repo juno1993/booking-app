@@ -23,7 +23,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import type { RoomType } from '@prisma/client'
+import type { RoomType } from '@/types'
 
 type RoomTypeWithCount = RoomType & { _count: { timeSlots: number } }
 
@@ -54,11 +54,13 @@ export function RoomTypeList({ productId, roomTypes }: RoomTypeListProps) {
   const [form, setForm] = useState<RoomTypeFormState>(defaultForm)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
 
   const openCreate = () => {
     setEditingRoom(null)
     setForm(defaultForm)
     setError(null)
+    setFieldErrors({})
     setIsDialogOpen(true)
   }
 
@@ -71,12 +73,14 @@ export function RoomTypeList({ productId, roomTypes }: RoomTypeListProps) {
       capacity: String(room.capacity),
     })
     setError(null)
+    setFieldErrors({})
     setIsDialogOpen(true)
   }
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
     setError(null)
+    setFieldErrors({})
 
     const data = {
       name: form.name,
@@ -94,7 +98,13 @@ export function RoomTypeList({ productId, roomTypes }: RoomTypeListProps) {
     setIsSubmitting(false)
 
     if (!result.success) {
-      setError('입력값을 확인해주세요')
+      // result를 unknown으로 캐스팅 후 재추론 — Zod fieldErrors(항상 object)와 문자열 에러 모두 처리
+      const errorData = (result as { success: false; error: unknown }).error
+      if (errorData && typeof errorData === 'object') {
+        setFieldErrors(errorData as Record<string, string[]>)
+      } else {
+        setError(typeof errorData === 'string' ? errorData : '입력값을 확인해주세요')
+      }
       return
     }
 
@@ -187,6 +197,9 @@ export function RoomTypeList({ productId, roomTypes }: RoomTypeListProps) {
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="예: 스탠다드룸, 디럭스룸"
               />
+              {fieldErrors.name && (
+                <p className="text-xs text-destructive">{fieldErrors.name[0]}</p>
+              )}
             </div>
             <div className="space-y-1">
               <Label htmlFor="room-desc">설명</Label>
@@ -197,6 +210,9 @@ export function RoomTypeList({ productId, roomTypes }: RoomTypeListProps) {
                 placeholder="객실 설명 (선택사항)"
                 rows={2}
               />
+              {fieldErrors.description && (
+                <p className="text-xs text-destructive">{fieldErrors.description[0]}</p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
@@ -208,6 +224,9 @@ export function RoomTypeList({ productId, roomTypes }: RoomTypeListProps) {
                   value={form.price}
                   onChange={(e) => setForm({ ...form, price: e.target.value })}
                 />
+                {fieldErrors.price && (
+                  <p className="text-xs text-destructive">{fieldErrors.price[0]}</p>
+                )}
               </div>
               <div className="space-y-1">
                 <Label htmlFor="room-capacity">최대 정원</Label>
@@ -219,6 +238,9 @@ export function RoomTypeList({ productId, roomTypes }: RoomTypeListProps) {
                   value={form.capacity}
                   onChange={(e) => setForm({ ...form, capacity: e.target.value })}
                 />
+                {fieldErrors.capacity && (
+                  <p className="text-xs text-destructive">{fieldErrors.capacity[0]}</p>
+                )}
               </div>
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}

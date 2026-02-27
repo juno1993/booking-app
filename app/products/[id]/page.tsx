@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
 import { ProductDetail } from '@/components/product/product-detail'
 import { SlotPicker } from '@/components/booking/slot-picker'
+import { isOvernightProduct } from '@/lib/utils'
 
 export default async function ProductDetailPage({
   params,
@@ -24,14 +25,7 @@ export default async function ProductDetailPage({
     // Auth failure - render as logged out
   }
 
-  const isOvernight =
-    product.category === 'PENSION' ||
-    product.category === 'HOTEL' ||
-    (() => {
-      const [oh, om] = product.openTime.split(':').map(Number)
-      const [ch, cm] = product.closeTime.split(':').map(Number)
-      return oh * 60 + om >= ch * 60 + cm
-    })()
+  const isOvernight = isOvernightProduct(product.category, product.openTime, product.closeTime)
 
   return (
     <div className="container mx-auto px-4 py-8 animate-slide-up">

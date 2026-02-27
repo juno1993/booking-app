@@ -16,18 +16,15 @@ export async function createBooking(formData: unknown) {
   const { timeSlotId, note, roomTypeName, priceSnapshot } = parsed.data
 
   const booking = await prisma.$transaction(async (tx) => {
-    const slot = await tx.timeSlot.findUnique({
-      where: { id: timeSlotId },
-    })
-
-    if (!slot || slot.status !== 'AVAILABLE') {
-      throw new Error('해당 슬롯은 예약할 수 없습니다')
-    }
-
-    await tx.timeSlot.update({
-      where: { id: timeSlotId },
+    // atomic: 상태 확인 + 변경을 단일 쿼리로 처리해 동시 예약 race condition 방지
+    const updated = await tx.timeSlot.updateMany({
+      where: { id: timeSlotId, status: 'AVAILABLE' },
       data: { status: 'BOOKED' },
     })
+
+    if (updated.count === 0) {
+      throw new Error('해당 슬롯은 예약할 수 없습니다')
+    }
 
     return tx.booking.create({
       data: {
@@ -39,8 +36,8 @@ export async function createBooking(formData: unknown) {
         ...(priceSnapshot !== undefined && { priceSnapshot }),
       },
     })
-  }).catch((err: Error) => {
-    return { error: err.message }
+  }).catch((err: unknown) => {
+    return { error: err instanceof Error ? err.message : '예약 처리 중 오류가 발생했습니다' }
   })
 
   if ('error' in booking) {
@@ -64,23 +61,15 @@ export async function createMultipleBookings(formData: unknown) {
   const groupId = crypto.randomUUID()
 
   const result = await prisma.$transaction(async (tx) => {
-    const slots = await tx.timeSlot.findMany({
-      where: { id: { in: timeSlotIds } },
-    })
-
-    if (slots.length !== timeSlotIds.length) {
-      throw new Error('일부 슬롯을 찾을 수 없습니다')
-    }
-
-    const unavailable = slots.filter((s) => s.status !== 'AVAILABLE')
-    if (unavailable.length > 0) {
-      throw new Error('일부 날짜는 이미 예약되었습니다')
-    }
-
-    await tx.timeSlot.updateMany({
-      where: { id: { in: timeSlotIds } },
+    // atomic: AVAILABLE 상태인 슬롯만 한 번에 BOOKED로 변경 → 동시 예약 race condition 방지
+    const updated = await tx.timeSlot.updateMany({
+      where: { id: { in: timeSlotIds }, status: 'AVAILABLE' },
       data: { status: 'BOOKED' },
     })
+
+    if (updated.count !== timeSlotIds.length) {
+      throw new Error('일부 날짜는 이미 예약되었습니다')
+    }
 
     return Promise.all(
       timeSlotIds.map((timeSlotId) =>
@@ -97,8 +86,8 @@ export async function createMultipleBookings(formData: unknown) {
         })
       )
     )
-  }).catch((err: Error) => {
-    return { error: err.message }
+  }).catch((err: unknown) => {
+    return { error: err instanceof Error ? err.message : '예약 처리 중 오류가 발생했습니다' }
   })
 
   if ('error' in result) {
